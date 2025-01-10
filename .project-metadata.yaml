@@ -1,11 +1,24 @@
 name: LLM Chatbot Augmented with Enterprise Data
 description: |
   This AMP demonstrates how to use an open source pre-trained instruction-following LLM (Large Language Model) to build a ChatBot-like web application. The responses of the LLM are enhanced by giving it context from an internal knowledge base. This context is retrieved by using an open source Vector Database to do semantic search.
-
 author: Cloudera Inc.
 specification_version: 1.0
 prototype_version: 1.0
 date: "2023-04-22"
+
+environment_variables:
+  PATH:
+    default: "${PATH}:$HOME/cuda/bin:$HOME/cuda/nvvm"
+    description: "Leave this value as is"
+    required: true
+  LD_LIBRARY_PATH:
+    default: "${LD_LIBRARY_PATH}:$HOME/cuda/lib64:$HOME/cuda/nvvm/lib64:$HOME/cuda/nvvm"
+    description: "Leave this value as is"
+    required: true
+  CUDA_HOME:
+    default: "$HOME/cuda"
+    description: "Leave this value as is"
+    required: true
 
 runtimes:
   - editor: PBJ Workbench
