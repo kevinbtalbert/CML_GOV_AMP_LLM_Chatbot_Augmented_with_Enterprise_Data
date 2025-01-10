@@ -41,7 +41,7 @@ tasks:
     short_summary: Install Dependencies
     kernel: python3
     cpu: 2
-    memory: 8
+    memory: 16
 
   - type: create_job
     name: Download Models
