@@ -12,7 +12,7 @@ curl -o /home/cdsw/nvidia-installer/cuda_12.6.3_560.35.05_linux.run https://deve
 mkdir -p ~/cuda
 
 # Run the CUDA installer
-bash /home/cdsw/nvidia-installer/cuda_12.6.3_560.35.05_linux.run --no-drm --no-man-page --override --toolkitpath=$HOME/cuda --toolkit
+bash /home/cdsw/nvidia-installer/cuda_12.6.3_560.35.05_linux.run --no-drm --no-man-page --override --toolkitpath=$HOME/cuda --toolkit --silent
 
 # Set CUDA environment variables (also need to be set in Project Settings)
 export PATH=${PATH}:$HOME/cuda/bin:$HOME/cuda/nvvm
