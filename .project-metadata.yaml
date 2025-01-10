@@ -42,6 +42,7 @@ tasks:
     kernel: python3
     cpu: 2
     memory: 16
+    gpu: 1
 
   - type: create_job
     name: Download Models
