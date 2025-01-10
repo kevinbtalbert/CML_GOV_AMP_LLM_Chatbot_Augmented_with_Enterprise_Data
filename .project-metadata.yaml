@@ -29,7 +29,7 @@ tasks:
   - type: run_session
     name: Deploy NVIDIA Toolkit
     script: 0_session-resource-validation/install-drivers.py
-    short_summary: Install Dependencies
+    short_summary: Deploy NVIDIA Toolkit
     kernel: python3
     cpu: 2
     memory: 16
