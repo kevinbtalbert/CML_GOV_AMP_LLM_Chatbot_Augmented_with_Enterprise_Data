@@ -1,7 +1,8 @@
 from milvus import default_server
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
 import subprocess
-
+import os
+os.environ['JUPYTER_NO_TQDM'] = True
 import utils.model_embedding_utils as model_embedding
 
 import os
