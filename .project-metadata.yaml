@@ -1,12 +1,28 @@
-name: LLM Chatbot Augmented with Enterprise Data
+name: LLM Chatbot Augmented with Enterprise Data (Gov Edition)
 description: |
-  This AMP demonstrates how to use an open source pre-trained instruction-following LLM (Large Language Model) to build a ChatBot-like web application. The responses of the LLM are enhanced by giving it context from an internal knowledge base. This context is retrieved by using an open source Vector Database to do semantic search.
+  This AMP demonstrates how to use an open source pre-trained instruction-following LLM (Large Language Model) to build a Chatbot-like web application. The responses of the LLM are enhanced by giving it context from an internal knowledge base. This context is retrieved by using an open source Vector Database to do semantic search.
 author: Cloudera Inc.
 specification_version: 1.0
 prototype_version: 1.0
 date: "2023-04-22"
 
 environment_variables:
+  EMBEDDING_MODEL_REPO:
+    default: "sentence-transformers/all-mpnet-base-v2"
+    description: "Embedding model used (repo name in HF)"
+    required: true
+  EMBEDDING_MODEL_NAME:
+    default: "all-mpnet-base-v2"
+    description: "Embedding model name"
+    required: true
+  LLM_MODEL_NAME:
+    default: "mistralai/Mistral-7B-Instruct-v0.2"
+    description: "LLM model used (repo name in HF)"
+    required: true
+  COLLECTION_NAME:
+    default: "cml-default"
+    description: "Collection name for Vector DB"
+    required: true
   PATH:
     default: "${PATH}:$HOME/cuda/bin:$HOME/cuda/nvvm"
     description: "Leave this value as is"
@@ -44,6 +60,23 @@ tasks:
     memory: 16
     gpu: 1
 
+  - type: run_session
+    name: Install CUDA / Torch
+    script: 1_session-install-deps/install-cuda.py
+    short_summary: Install CUDA / Torch
+    kernel: python3
+    cpu: 2
+    memory: 16
+    gpu: 1
+
+  - type: run_session
+    name: Setup Chroma DB
+    script: 1_session-install-deps/setup-chroma.py
+    short_summary: Setup Chroma DB
+    kernel: python3
+    cpu: 2
+    memory: 2
+
   - type: create_job
     name: Download Models
     entity_label: download_data_and_models
@@ -59,7 +92,18 @@ tasks:
   - type: run_job
     entity_label: download_data_and_models
     short_summary: Run job to download pre-trained models.
-    
+
+  - type: create_job
+    name: Setup a Job for user to convert HTMLs to Text for loading to Vector DB
+    entity_label: vectordb_insert
+    script: 3_job-populate-vectordb/html-to-text.py
+    arguments: None
+    short_summary: Setup a Job for user to convert HTMLs to Text for loading to Vector DB
+    cpu: 2
+    memory: 8
+    environment:
+      TASK_TYPE: CREATE/RUN_JOB
+
   - type: create_job
     name: Populate Vector DB with documents embeddings
     entity_label: vectordb_insert

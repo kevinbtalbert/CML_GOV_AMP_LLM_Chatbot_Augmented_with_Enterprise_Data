@@ -1,76 +1,71 @@
-from milvus import default_server
-from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
-import subprocess
 import os
-os.environ['JUPYTER_NO_TQDM'] = True
-import utils.model_embedding_utils as model_embedding
 
-import os
+## Initialize a connection to the running Chroma DB server
+import chromadb
 from pathlib import Path
 
-def create_milvus_collection(collection_name, dim):
-      if utility.has_collection(collection_name):
-          utility.drop_collection(collection_name)
+base_path = os.getcwd()
 
-      fields = [
-      FieldSchema(name='relativefilepath', dtype=DataType.VARCHAR, description='file path relative to root directory ', max_length=1000, is_primary=True, auto_id=False),
-      FieldSchema(name='embedding', dtype=DataType.FLOAT_VECTOR, description='embedding vectors', dim=dim)
-      ]
-      schema = CollectionSchema(fields=fields, description='reverse image search')
-      collection = Collection(name=collection_name, schema=schema)
+if "load-to-chromadb" in base_path:
+    chroma_client = chromadb.PersistentClient(path=base_path.replace("3_job-populate-vectordb", "") + "/chroma-data")
 
-      # create IVF_FLAT index for collection.
-      index_params = {
-          'metric_type':'IP',
-          'index_type':"IVF_FLAT",
-          'params':{"nlist":2048}
-      }
-      collection.create_index(field_name="embedding", index_params=index_params)
-      return collection
+if "load-to-chromadb" not in base_path:
+    chroma_client = chromadb.PersistentClient(path=base_path + "/chroma-data")
+    base_path = os.path.join(base_path, "load-to-chromadb")    
+
+
+from chromadb.utils import embedding_functions
+EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
+
+COLLECTION_NAME = 'cml-default'
+
+print("initialising Chroma DB connection...")
+
+print(f"Getting '{COLLECTION_NAME}' as object...")
+try:
+    chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+    print("Success")
+    collection = chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+except:
+    print("Creating new collection...")
+    collection = chroma_client.create_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+    print("Success")
+
+# Get latest statistics from index
+current_collection_stats = collection.count()
+print('Total number of embeddings in Chroma DB index is ' + str(current_collection_stats))
+
+# Helper function for adding documents to the Chroma DB
+def upsert_document(collection, document, metadata=None, classification="public", file_path=None):
     
-# Create an embedding for given text/doc and insert it into Milvus Vector DB
-def insert_embedding(collection, id_path, text):
-    embedding =  model_embedding.get_embeddings(text)
-    data = [[id_path], [embedding]]
-    collection.insert(data)
-    
-def main():
-  # Reset the vector database files
-  print(subprocess.run(["rm -rf milvus-data"], shell=True))
+    # Push document to Chroma vector db (if file path is not available, will use first 50 characters of document)
+    if file_path is not None:
+        response = collection.add(
+            documents=[document],
+            metadatas=[{"classification": classification}],
+            ids=[file_path]
+        )
+    else:
+        response = collection.add(
+            documents=[document],
+            metadatas=[{"classification": classification}],
+            ids=document[:50]
+        )
+    return response
 
-  default_server.set_base_dir('milvus-data')
-  default_server.start()
+# Return the Knowledge Base doc based on Knowledge Base ID (relative file path)
+def load_context_chunk_from_data(id_path):
+    with open(id_path, "r") as f: # Open file in read mode
+        return f.read()
 
-  try:
-    connections.connect(alias='default', host='localhost', port=default_server.listen_port)   
-    print(utility.get_server_version())
-
-    # Create/Recreate the Milvus collection
-    collection_name = 'cloudera_ml_docs'
-    collection = create_milvus_collection(collection_name, 384)
-
-    print("Milvus database is up and collection is created")
-
-    # Read KB documents in ./data directory and insert embeddings into Vector DB for each doc
-    # The default embeddings generation model specified in this AMP only generates embeddings for the first 256 tokens of text.
-    doc_dir = './data'
-    for file in Path(doc_dir).glob(f'**/*.txt'):
-        with open(file, "r") as f: # Open file in read mode
-            print("Generating embeddings for: %s" % file.name)
-            text = f.read()
-            insert_embedding(collection, os.path.abspath(file), text)
-
-    collection.flush()
-    print('Total number of inserted embeddings is {}.'.format(collection.num_entities))
-    print('Finished loading Knowledge Base embeddings into Milvus')
-
-  except Exception as e:
-    default_server.stop()
-    raise (e)
-    
-  
-  default_server.stop()
-
-
-if __name__ == "__main__":
-    main()
+# Read KB documents in ./data directory and insert embeddings into Vector DB for each doc
+doc_dir = base_path + '/data'
+for file in Path(doc_dir).glob(f'**/*.txt'):
+    print(file)
+    with open(file, "r") as f: # Open file in read mode
+        print("Generating embeddings for: %s" % file.name)
+        text = f.read()
+        upsert_document(collection=collection, document=text, file_path=os.path.abspath(file))
+print('Finished loading Knowledge Base embeddings into Chroma DB')
