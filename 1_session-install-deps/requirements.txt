@@ -1,30 +1,40 @@
-# pandas==2.0.3
-# # milvus==2.2.8
-# # pymilvus==2.2.8
-# gradio==3.37.0
-# transformers==4.31.0
-# #torch==2.0.1
-# accelerate==0.21.0
-# ipywidgets==8.1.5
-# tokenizers==0.13.0
-# sentence-transformers==3.4.0
-
-# # chroma-hnswlib==0.7.3
-# # chromadb==0.5.0
-# # pysqlite3-binary==0.5.4
-# beautifulsoup4==4.11.1
-
-
-pandas
-gradio
-transformers==4.24.0
+pandas==2.0.3
+# milvus==2.2.8
+# pymilvus==2.2.8
+gradio==3.37.0
+transformers==4.31.0
 #torch==2.0.1
-accelerate
-ipywidgets
+accelerate==0.21.0
+ipywidgets==8.1.5
 tokenizers==0.13.0
-chromadb==0.5.0
-pysqlite3-binary
-beautifulsoup4
-sententence-transformers==2.2.2
-typing-extensions==4.8.0
+# sentence-transformers==3.4.0
+beautifulsoup4==4.11.1
+
+
+langchain
+langchain_community
+PyPDF2
+python-dotenv
+faiss-cpu
+
+# langchain==0.1.19
+# langchain_community==0.0.38
+# PyPDF2==3.0.1
+# python-dotenv==1.0.1
+# faiss-cpu==1.8.0
+
+
+
+# pandas
+# gradio
+# transformers==4.24.0
+# #torch==2.0.1
+# accelerate
+# ipywidgets
+# tokenizers==0.13.0
+# chromadb==0.5.0
+# pysqlite3-binary
+# beautifulsoup4
+# sententence-transformers==2.2.2
+# typing-extensions==4.8.0
 
