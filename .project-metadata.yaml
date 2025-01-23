@@ -7,22 +7,22 @@ prototype_version: 1.0
 date: "2023-04-22"
 
 environment_variables:
-  EMBEDDING_MODEL_REPO:
-    default: "sentence-transformers/all-mpnet-base-v2"
-    description: "Embedding model used (repo name in HF)"
-    required: true
-  EMBEDDING_MODEL_NAME:
-    default: "all-mpnet-base-v2"
-    description: "Embedding model name"
-    required: true
-  LLM_MODEL_NAME:
-    default: "mistralai/Mistral-7B-Instruct-v0.2"
-    description: "LLM model used (repo name in HF)"
-    required: true
-  COLLECTION_NAME:
-    default: "cml-default"
-    description: "Collection name for Vector DB"
-    required: true
+  # EMBEDDING_MODEL_REPO:
+  #   default: "sentence-transformers/all-mpnet-base-v2"
+  #   description: "Embedding model used (repo name in HF)"
+  #   required: true
+  # EMBEDDING_MODEL_NAME:
+  #   default: "all-mpnet-base-v2"
+  #   description: "Embedding model name"
+  #   required: true
+  # LLM_MODEL_NAME:
+  #   default: "mistralai/Mistral-7B-Instruct-v0.2"
+  #   description: "LLM model used (repo name in HF)"
+  #   required: true
+  # COLLECTION_NAME:
+  #   default: "cml-default"
+  #   description: "Collection name for Vector DB"
+  #   required: true
   PATH:
     default: "${PATH}:$HOME/cuda/bin:$HOME/cuda/nvvm"
     description: "Leave this value as is"

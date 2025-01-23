@@ -19,7 +19,7 @@ EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
 EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
 EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
 
-COLLECTION_NAME = 'cml-default'
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "cml-default")
 
 print("initialising Chroma DB connection...")
 
