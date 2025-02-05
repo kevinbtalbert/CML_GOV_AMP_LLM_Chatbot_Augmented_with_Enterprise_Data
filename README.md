@@ -120,7 +120,7 @@ Definition of the application `CML LLM Chatbot`
    - Instruction-following Large Language Model
 - [Hugging Face transformers library](https://pypi.org/project/transformers/)
 #### Vector Database
-- [Milvus](https://github.com/milvus-io/milvus)
+- [Chroma](https://pypi.org/project/chromadb/)
 #### Chat Frontend
 - [Gradio](https://github.com/gradio-app/gradio)
 

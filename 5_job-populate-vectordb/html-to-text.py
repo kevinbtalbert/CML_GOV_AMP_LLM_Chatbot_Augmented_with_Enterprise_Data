@@ -87,8 +87,8 @@ def extract_and_write_text(url, base_path, tld):
 def main():
     base_path = os.getcwd()
 
-    if "load-to-chromadb" not in base_path:
-        base_path = os.path.join(base_path, "load-to-chromadb")
+    if "5_job-populate-vectordb" not in base_path:
+        base_path = os.path.join(base_path, "5_job-populate-vectordb")
 
     with open(base_path + "/html-links.txt", "r") as file:
         for line in file:
