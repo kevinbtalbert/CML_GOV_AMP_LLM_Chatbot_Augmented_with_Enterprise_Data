@@ -31,7 +31,7 @@ install_pytorch() {
         10.2) pip_url="https://download.pytorch.org/whl/cu102" ;;
         *)
             echo "Warning: CUDA version $cuda_version is not explicitly supported. Installing PyTorch for CPU."
-            pip install torch torchvision torchaudio
+            pip install "networkx<3.3" torch torchvision torchaudio
             return 0
             ;;
     esac
@@ -39,7 +39,7 @@ install_pytorch() {
     # Install PyTorch with the correct URL
     echo "Detected CUDA version: $cuda_version"
     echo "Installing PyTorch with GPU support from $pip_url..."
-    pip install torch torchvision torchaudio --index-url "$pip_url"
+    pip install "networkx<3.3" torch torchvision torchaudio --index-url "$pip_url"
 }
 
 # Main script logic
