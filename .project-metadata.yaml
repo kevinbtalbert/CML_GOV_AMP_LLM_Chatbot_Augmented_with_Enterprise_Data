@@ -41,7 +41,7 @@ tasks:
 
   - type: run_session
     name: Install PyTorch
-    script: 1_session-install-pytorch/install-cuda.py
+    script: 1_session-install-pytorch/install-pytorch.py
     short_summary: Install PyTorch
     kernel: python3
     cpu: 2
