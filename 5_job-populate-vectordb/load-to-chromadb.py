@@ -27,9 +27,8 @@ print("Initializing Chroma DB connection...")
 
 # Retrieve or create collection with the local embedding function
 try:
-    chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
-    print("Success")
     collection = chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+    print("Success")
 except:
     print("Creating new collection...")
     collection = chroma_client.create_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
@@ -39,23 +38,72 @@ except:
 current_collection_stats = collection.count()
 print(f"Total number of embeddings in Chroma DB index: {current_collection_stats}")
 
-# Helper function for adding documents to the Chroma DB
-def upsert_document(collection, document, metadata=None, classification="public", file_path=None):
-    doc_id = file_path if file_path else document[:50]  # Use file path as ID if available
-    response = collection.add(
-        documents=[document],
-        metadatas=[{"classification": classification}],
-        ids=[doc_id]
-    )
-    return response
+# ** Load original HTML links to reconstruct URLs **
+html_links_file = os.path.join(base_path, "html-links.txt")
+url_mapping = {}
 
-# Read and load knowledge base documents into ChromaDB
+try:
+    with open(html_links_file, "r") as f:
+        for line in f:
+            url = line.strip()
+            if url:
+                file_name = url.split("/")[-1].replace(".html", "")
+                url_mapping[file_name] = url  # Map the doc name to the full URL
+except FileNotFoundError:
+    print(f"⚠️ {html_links_file} not found. Falling back to file names for sources.")
+except Exception as e:
+    print(f"⚠️ Error reading {html_links_file}: {e}. Falling back to file names for sources.")
+
+# ** Function to split documents intelligently **
+def split_text_smart(text, max_length=1000):
+    """Split text at the nearest period before max_length to avoid cutting sentences."""
+    chunks = []
+    snippet_number = 1
+    
+    while len(text) > max_length:
+        split_index = text[:max_length].rfind(".")
+        if split_index == -1:  
+            split_index = max_length  
+
+        chunks.append((text[:split_index + 1], snippet_number))
+        text = text[split_index + 1:].strip()
+        snippet_number += 1
+    
+    if text:  
+        chunks.append((text, snippet_number))
+    
+    return chunks
+
+# ** Insert document chunks into ChromaDB with metadata **
+def upsert_document(collection, doc_name, text_chunks, file_path):
+    """Insert split document chunks into ChromaDB with snippet metadata."""
+    base_filename = Path(file_path).stem  # Extract filename without extension
+    source_url = url_mapping.get(base_filename, base_filename)  # Use URL if available, otherwise fallback to filename
+
+    for chunk_text, snippet_number in text_chunks:
+        doc_id = f"{base_filename}-{snippet_number}"  # Unique ID per snippet
+
+        metadata = {
+            "Source": source_url,
+            "Snippet": snippet_number,
+            "Classification": "public"
+        }
+
+        collection.add(documents=[chunk_text], metadatas=[metadata], ids=[doc_id])
+        print(f"Added {doc_id} to ChromaDB.")
+
+# ** Process and insert documents **
 doc_dir = os.path.join(base_path, 'data')
 for file in Path(doc_dir).glob(f'**/*.txt'):
     print(f"Processing file: {file}")
-    with open(file, "r") as f:
+
+    with open(file, "r", encoding="utf-8") as f:
         text = f.read()
-        print(f"Generating embeddings for: {file.name}")
-        upsert_document(collection=collection, document=text, file_path=os.path.abspath(file))
+
+        # Split large documents
+        text_chunks = split_text_smart(text)
+
+        # Insert into ChromaDB
+        upsert_document(collection, file.stem, text_chunks, str(file))
 
 print("Finished loading Knowledge Base embeddings into Chroma DB.")

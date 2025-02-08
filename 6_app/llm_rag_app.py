@@ -1,58 +1,87 @@
+from flask import Flask, render_template, request
+import subprocess
+import json
 import os
-import gradio as gr
-from sentence_transformers import SentenceTransformer
-import chromadb
-from chromadb.utils import embedding_functions
+import sys
+import logging
+
+# Suppress Flask server logs
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+# Flask app initialization
+app = Flask(__name__, template_folder="6_app/templates", static_folder="6_app/static")
+
+# Add necessary paths for the LLM model
+VENV_PATH = "/home/cdsw/chroma_venv"
+VENV_SITE_PACKAGES = os.path.join(VENV_PATH, "lib", "python3.x", "site-packages")
+sys.path.insert(0, VENV_SITE_PACKAGES)
+
 import utils.model_llm_utils as model_llm
 
+def query_vector_db(question):
+    """Executes query_chroma_app.py and processes the response."""
+    try:
+        venv_python = "/home/cdsw/chroma_venv/bin/python"
+        script_path = "6_app/query_chroma_app.py"
 
-# Configuration
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-CHROMA_DATA_FOLDER = "/home/cdsw/chroma_data"
-HOST = "127.0.0.1"
-APP_PORT = int(os.getenv('CDSW_APP_PORT', 7860))
+        print(f"🔧 Executing ChromaDB query for: {question}")
 
-# Initialize Chroma DB connection
-print("Initializing Chroma DB connection...")
-chroma_client = chromadb.PersistentClient(path=CHROMA_DATA_FOLDER)
-embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
+        result = subprocess.run(
+            [venv_python, script_path, question],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=120,
+        )
 
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
 
-# Get available Chroma collections (indexes)
-def get_chroma_indexes():
-    return chroma_client.list_collections()
+        print(f"✅ Subprocess stdout:\n{stdout}")
+        if stderr:
+            print(f"⚠️ Subprocess stderr:\n{stderr}")
 
+        if not stdout:
+            return None, "No response received from ChromaDB."
 
-# Function to query the nearest knowledge base chunk from Chroma
-def get_nearest_chunk_from_chroma_vectordb(collection, question):
-    response = collection.query(
-        query_texts=[question],
-        n_results=1
-    )
-    if response["documents"]:
-        return response["documents"][0][0], response["metadatas"][0][0]
-    return None, None
+        try:
+            json_output = json.loads(stdout)
+        except json.JSONDecodeError as e:
+            print(f"❌ Raw stdout:\n{stdout}")
+            return None, f"Invalid JSON response from ChromaDB: {str(e)}"
 
+        if "error" in json_output:
+            return None, json_output["error"]
 
-# Function to generate enhanced prompt
+        return json_output.get("context"), json_output.get("metadata")
+
+    except subprocess.TimeoutExpired:
+        return None, "ChromaDB query timed out after 120 seconds."
+    except subprocess.CalledProcessError as e:
+        return None, f"ChromaDB process failed: {e.stderr.strip()}"
+    except Exception as e:
+        return None, f"Unexpected error: {str(e)}"
+
 def create_prompt(context, question):
+    """Formats the prompt for LLM generation."""
     if context:
-        prompt_template = """<human>: Context: %s\nQuestion: %s\n<bot>:"""
+        prompt_template = """<human>: Answer this question based on given context: %s\nQuestion: %s\n<bot>:"""
         return prompt_template % (context, question)
     else:
         prompt_template = """<human>: Question: %s\n<bot>:"""
         return prompt_template % question
 
-
-# Function to query the LLM model
 def get_llm_response(prompt):
+    """Generates response using the LLM."""
     stop_words = ['<human>:', '\n<bot>:']
-
+    print("THIS IS WHATS GOING TO THE MODEL")
+    print(prompt)
     generated_text = model_llm.get_llm_generation(
         prompt,
         stop_words,
-        max_new_tokens=256,
-        do_sample=False,
+        max_new_tokens=512,
+        do_sample=True,
         temperature=0.7,
         top_p=0.85,
         top_k=70,
@@ -60,76 +89,56 @@ def get_llm_response(prompt):
     )
     return generated_text
 
+def format_metadata(metadata):
+    """Format metadata for better readability in the UI."""
+    if metadata and "Source" in metadata:
+        source_url = metadata["Source"]
+        metadata["Source"] = f'<a href="{source_url}" target="_blank">{source_url}</a>'
+    return json.dumps(metadata, indent=4).replace("\n", "<br>").replace(" ", "&nbsp;")
 
-# Main response handler for the Gradio app
-def get_responses(question, use_chroma, selected_index):
-    if use_chroma and selected_index:
-        # Load the selected Chroma collection
+@app.route("/", methods=["GET", "POST"])
+def home():
+    """Main UI for the Flask app."""
+    question = None
+    context = None
+    metadata = None
+    llm_response = None
+    error = None
+
+    if request.method == "POST":
         try:
-            collection = chroma_client.get_collection(name=selected_index, embedding_function=embedding_function)
+            question = request.form.get("question")
+            use_chroma = request.form.get("use_chroma") == "on"
+
+            if not question:
+                error = "Please enter a valid question."
+            else:
+                if use_chroma:
+                    context, metadata = query_vector_db(question)
+                    if context:
+                        print(f"✅ Retrieved context from ChromaDB: {context}")
+                        prompt = create_prompt(context, question)
+                        llm_response = get_llm_response(prompt)
+                        print(f"✅ LLM Response with context: {llm_response}")
+                    else:
+                        error = f"Error querying Vector DB: {metadata}"
+                else:
+                    prompt = create_prompt(None, question)
+                    llm_response = get_llm_response(prompt)
+                    print(f"✅ LLM Response without context: {llm_response}")
         except Exception as e:
-            return f"Error loading Chroma index '{selected_index}': {str(e)}"
+            error = f"Unexpected error: {str(e)}"
 
-        # Retrieve context from the selected Chroma collection
-        context_chunk, metadata = get_nearest_chunk_from_chroma_vectordb(collection, question)
-        if context_chunk:
-            prompt = create_prompt(context_chunk, question)
-            response = get_llm_response(prompt)
-            return f"Response: {response}\n\nMetadata: {metadata}"
-        else:
-            return "No relevant context found in the selected knowledge base. LLM response generated without context."
-    else:
-        # Generate response without using Chroma
-        prompt = create_prompt(None, question)
-        response = get_llm_response(prompt)
-        return f"Response: {response}"
+    formatted_metadata = format_metadata(metadata) if metadata else ""
 
-
-# Gradio app configuration
-def main():
-    print("Configuring Gradio app...")
-
-    title = "RAG Chatbot with Chroma Integration"
-    description = (
-        "This chatbot uses retrieval-augmented generation (RAG) with Chroma for "
-        "querying a vector database to provide context-aware responses. "
-        "The Chroma index to use is specified via the COLLECTION_NAME environment variable."
+    return render_template(
+        "index.html",
+        question=question or "",
+        context=context or "",
+        metadata=formatted_metadata,
+        llm_response=llm_response or "",
+        error=error or "",
     )
-
-    # Get the collection name from the environment variable
-    collection_name = os.getenv("COLLECTION_NAME", "cml-default")
-    print(f"Using Chroma collection: {collection_name}")
-
-    demo = gr.Interface(
-        fn=lambda question, use_chroma: get_responses(
-            question, use_chroma, collection_name
-        ),
-        inputs=[
-            gr.Textbox(label="Question", placeholder="Enter your question here"),
-            gr.Checkbox(label="Use Chroma for Context Retrieval", value=True),
-        ],
-        outputs=gr.Textbox(label="Response"),
-        examples=[
-            ["What are ML Runtimes?", True],
-            ["What kinds of users use CML?", True],
-            ["How do data scientists use CML?", False],
-            ["What are iceberg tables?", True],
-        ],
-        title=title,
-        description=description,
-        allow_flagging="never",
-    )
-
-    print("Launching Gradio app...")
-    demo.launch(
-        share=True,
-        enable_queue=True,
-        show_error=True,
-        server_name=HOST,
-        server_port=APP_PORT,
-    )
-    print("Gradio app ready.")
-
 
 if __name__ == "__main__":
-    main()
+    app.run(host="127.0.0.1", port=int(os.environ["CDSW_READONLY_PORT"]))
