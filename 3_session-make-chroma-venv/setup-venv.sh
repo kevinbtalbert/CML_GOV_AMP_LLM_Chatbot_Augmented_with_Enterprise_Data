@@ -16,7 +16,7 @@
 
 VENV_DIR="$HOME/chroma_venv"
 
-echo "🚀 Setting up an isolated ChromaDB environment in $VENV_DIR..."
+echo "Setting up an isolated ChromaDB environment in $VENV_DIR..."
 
 # Ensure Python 3 is available
 if ! command -v python3 &> /dev/null; then
@@ -59,5 +59,5 @@ echo "    source $VENV_DIR/bin/activate"
 echo -e "\nIf you have scripts that need this environment, run them with:"
 echo "    python your_script.py"
 
-echo -e "\n🎉 All done! The environment is fully set up."
+echo -e "\nAll done! The environment is fully set up."
 
