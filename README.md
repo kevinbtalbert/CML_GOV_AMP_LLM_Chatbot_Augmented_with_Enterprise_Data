@@ -1,13 +1,12 @@
 # LLM Chatbot Augmented with Enterprise Data (Gov Edition)
 
-This repository demonstrates how to use an open source pre-trained instruction-following LLM (Large Language Model) to build a ChatBot-like web application. The responses of the LLM are enhanced by giving it context from an internal knowledge base. This context is retrieved by using an open source Vector Database to do semantic search. 
-
-Watch the Chatbot in action [here](https://www.youtube.com/watch?v=WBH9hYDyHKU).
+This repository demonstrates how to use an open source pre-trained instruction-following LLM (Large Language Model) to build a Chatbot web application. The responses of the LLM are enhanced by giving it context from an internal knowledge base. This context is retrieved by using Chroma, an open source Vector Database, to do semantic search. This AMP was built specifically for supporting the CDP for Government (FedRAMP) environment and uses FIPS compliant python libraries to ensure seamless AMP build and execution.
 
 ![image](./images/app-screenshot.png)
+
 All the components of the application (knowledge base, context retrieval, prompt enhancement LLM) are running within CML. This application does not call any external model APIs nor require any additional training of an LLM. The knowledge base provided in this repository is a slice of the Cloudera Machine Learning documentation.
 
-> **IMPORTANT**: Please read the following before proceeding.  By configuring and launching this AMP, you will cause h2oai/h2ogpt-oig-oasst1-512-6.9b, which is a third party large language model (LLM), to be downloaded and installed into your environment from the third party’s website.  Please see https://huggingface.co/h2oai/h2ogpt-oig-oasst1-512-6.9b for more information about the LLM, including the applicable license terms.  If you do not wish to download and install h2oai/h2ogpt-oig-oasst1-512-6.9b, do not deploy this repository.  By deploying this repository, you acknowledge the foregoing statement and agree that Cloudera is not responsible or liable in any way for h2oai/h2ogpt-oig-oasst1-512-6.9b. Author: Cloudera Inc.
+> **IMPORTANT**: Please read the following before proceeding.  By configuring and launching this AMP, you will cause `h2oai/h2ogpt-oig-oasst1-512-6.9b`, which is a third party large language model (LLM), to be downloaded and installed into your environment from the third party’s website.  Please see `https://huggingface.co/h2oai/h2ogpt-oig-oasst1-512-6.9b` for more information about the LLM, including the applicable license terms.  If you do not wish to download and install `h2oai/h2ogpt-oig-oasst1-512-6.9b`, do not deploy this repository.  By deploying this repository, you acknowledge the foregoing statement and agree that Cloudera is not responsible or liable in any way for `h2oai/h2ogpt-oig-oasst1-512-6.9b`. Author: Cloudera Inc.
 
 ## Table of Contents 
 #### README
@@ -15,16 +14,9 @@ All the components of the application (knowledge base, context retrieval, prompt
   * [Retrieval Augmented Generation (RAG) Architecture](#retrieval-augmented-generation--rag--architecture)
 * [Requirements](#requirements)
 * [Project Structure](#project-structure)
-  * [Implementation](#implementation)
+* [Implementation](#implementation)
 * [Technologies Used](#technologies-used)
 
-#### Guides
-* [Customization](guides/customization.md)
-    * [Knowledgebase](guides/customization.md#knowledgebase)
-    * [Models](guides/customization.md#Model)
-* [Troubleshooting](guides/troubleshooting.md)
-    * [AMP Failures](guides/troubleshooting.md#amp-failures)
-    * [Limitations](guides/troubleshooting.md#limitations)
 
 ## Enhancing Chatbot with Enterprise Context to reduce hallucination
 ![image](./images/rag-architecture.png)
@@ -35,7 +27,7 @@ For more detailed description of architectures like this and how it can enhance 
 
 ### Retrieval Augmented Generation (RAG) Architecture
 - Knowledge base Ingest into Vector Database
-  - Given a local directory of proprietary data files (in this example 11 documentation files about CML)
+  - Given a local directory of proprietary data files (in this example we just use HTML links from Cloudera's ML documentation but you will need to update these with your own or add your own txt files to the `5_job-populate-vector-db/data` folder)
   - Generate embeddings with an open sourced pretrained model for each of those files
   - Store those embeddings along with document IDs in a Vector Database to enable semantic search
 - Augmenting User Question with Additional Context from Knowledge Base
@@ -54,12 +46,15 @@ For more detailed description of architectures like this and how it can enhance 
 
 #### Resource Requirements
 This AMP creates the following workloads with resource requirements:
-- CML Session: `1 CPU, 4GB MEM`
-- CML Jobs: `1 CPU, 4GB MEM`
+- CML Session: `2 CPU, 1 GPU, 16GB MEM` *(not required after AMP is fully deployed)*
+- CML Jobs: `2 CPU, 8GB MEM`
 - CML Application: `2 CPU, 1 GPU, 16GB MEM`
 
 #### External Resources
 This AMP requires pip packages and models from huggingface. Depending on your CML networking setup, you may need to whitelist some domains:
+- docs.cloudera.com
+- developer.download.nvidia.com
+- download.pytorch.org
 - pypi.python.org
 - pypi.org
 - pythonhosted.org
@@ -71,45 +66,60 @@ This AMP requires pip packages and models from huggingface. Depending on your CM
 The project is organized with the following folder structure:
 ```
 .
-├── 0_session-resource-validation/  # Script for checking CML workspace requirements
-├── 1_session-install-deps/   # Setup script for installing python dependencies
-├── 2_job-download-models/    # Setup scripts for downloading pre-trained models
-├── 3_job-populate-vectordb/  # Setup scripts for initializing and populating a vector database with context documents
-├── 4_app/                    # Backend scripts for launching chat webapp and making requests to locally running pre-trained models
-├── data/                     # Sample documents to use to context retrieval
-├── utils/                    # Python module for functions used for interacting with pre-trained models
+├── 0_session-install-cuda/          # Script for install NVIDIA CUDA Toolkit
+├── 1_session-install-pytorch/       # Install LLM Python library dependencies
+├── 2_session-install-dependencies/  # Installs the latest GPU accelerated PyTorch libraries
+├── 3_session-make-chroma-venv/      # Creates a virtual environment for generating embeddings to load to Chroma
+├── 4_job-download-models/           # Setup scripts for downloading pre-trained models
+├── 5_job-populate-vectordb/         # Setup scripts for initializing and populating a vector database with context documents
+├── 6_app/                           # Backend scripts for launching chat webapp and making requests to locally running pre-trained models
+├── utils/                           # Python modules for functions used for interacting with pre-trained models
 ├── images/
 ├── README.md
 └── LICENSE.txt
 ```
+
 ## Implementation
 ### `data/`
 This directory stores all the individual sample documents that are used for context retrieval in the chatbot application
-- Sourced from:
-  - [CML](https://docs.cloudera.com/machine-learning/cloud/index.html)
-  - [Iceberg](https://iceberg.apache.org/docs/1.2.0/)
-  - [Ozone](https://docs.cloudera.com/cdp-private-cloud-base/7.1.8/ozone-overview/topics/ozone-introduction.html)
+- Sourced from [CML](https://docs.cloudera.com/machine-learning/cloud/index.html)
+- Links can be updated in `5_job-populate-vectordb/html-links.txt`
 
-### `1_session-install-deps`
-- Install python dependencies specified in 1_session-install-deps/requirements.txt
+### `0_session-install-cuda`
+- Installs NVIDIA's CUDA Toolkit and links the relevant environment variables (uses `cuda_12.6.3_560.35.05_linux` release)
 
-### `2_job-download-models`
+### `1_session-install-pytorch`
+- Installs the latest GPU accelerated PyTorch libraries
+
+### `2_session-install-dependencies`
+- Install python dependencies specified in `2_session-install-dependencies/requirements.txt`
+- Certain python libraries have been selected to align with FIPS cryptography and strong encryption. As an example, at the time of this writing,  `tokenizers==0.13.0` is the lastest version of this library not using weak `md5` encryption. Attempts to install later versions may succeed but application will fail to execute since the UBI will know to kill this process.
+
+### `3_session-make-chroma-venv`
+Creates a virtual environment for generating embeddings to load to Chroma Vector DB. 
+- Must be leveraged due to the hard dependencies on certain python libraries by the LLM application
+- Executing with the virtual environment is done via wrapper files with the syntax `exec-*`
+
+### `4_job-download-models`
 Definition of the job **Download Models** 
 - Directly download specified models from huggingface repositories
 - These are pulled to new directories models/llm-model and models/embedding-model
 
-### `3_job-populate-vectordb`
+### `5_job-populate-vectordb`
+Definition of the job **Download / Convert HTMLs to Text**
 Definition of the job **Populate Vector DB with documents embeddings**
-- Start the milvus vector database and set database to be persisted in new directory milvus-data/
-- Generate embeddings for each document in data/
+- Download and convert to TXT all HTMLs in `5_job-populate-vectordb/html-links.txt` (examples provided)
+- Converted files will be stored in a `5_job-populate-vectordb/data/*` subdirectory nested folder structure.
+- Create a collection for the Chroma vector database and set database to be persisted in new directory chroma-data/
+- Generate embeddings for each document in `5_job-populate-vectordb/data/*` (additional metadata tags can be added/removed based on business use case in `5_job-populate-vectordb/load-to-chromadb.py`)
 - The embeddings vector for each document is inserted into the vector database
 - Stop the vector database
 
-### `4_app`
-Definition of the application `CML LLM Chatbot`
-- Start the milvus vector database using persisted database data in milvus-data/
+### `6_app`
+Definition of the application `LLM RAG Chatbot`
+- Start the Chroma vector database using persisted database data in chroma-data/
 - Load locally persisted pre-trained models from models/llm-model and models/embedding-model 
-- Start gradio interface 
+- Start flask web interface 
 - The chat interface performs both retrieval-augmented LLM generation and regular LLM generation for bot responses.
 
 ## Technologies Used
@@ -121,11 +131,12 @@ Definition of the application `CML LLM Chatbot`
 - [Hugging Face transformers library](https://pypi.org/project/transformers/)
 #### Vector Database
 - [Chroma](https://pypi.org/project/chromadb/)
-#### Chat Frontend
-- [Gradio](https://github.com/gradio-app/gradio)
+#### Chat Interface
+- [Flask](https://flask.palletprojects.com/en/stable)
+- [Jinja2](https://jinja.palletprojects.com/en/stable)
 
 ## Deploying on CML
 There are two ways to launch this prototype on CML:
 
 1. **From Prototype Catalog** - Navigate to the Prototype Catalog on a CML workspace, select the "LLM Chatbot Augmented with Enterprise Data" tile, click "Launch as Project", click "Configure Project"
-2. **As ML Prototype** - In a CML workspace, click "New Project", add a Project Name, select "ML Prototype" as the Initial Setup option, copy in the [repo URL](https://github.com/cloudera/CML_AMP_LLM_Chatbot_Augmented_with_Enterprise_Data), click "Create Project", click "Configure Project"
+2. **As ML Prototype** - In a CML workspace, click "New Project", add a Project Name, select "ML Prototype" as the Initial Setup option, copy in the [repo URL](https://github.com/cloudera/CML_GOV_AMP_LLM_Chatbot_Augmented_with_Enterprise_Data), click "Create Project", click "Configure Project"

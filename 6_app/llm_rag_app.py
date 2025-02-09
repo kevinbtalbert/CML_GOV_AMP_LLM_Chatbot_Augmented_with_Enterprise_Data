@@ -1,3 +1,17 @@
+# Copyright 2025 Cloudera Government Solutions, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from flask import Flask, render_template, request
 import subprocess
 import json
@@ -38,9 +52,9 @@ def query_vector_db(question):
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
 
-        print(f"✅ Subprocess stdout:\n{stdout}")
-        if stderr:
-            print(f"⚠️ Subprocess stderr:\n{stderr}")
+        # print(f"Subprocess stdout:\n{stdout}")
+        # if stderr:
+        #     print(f"⚠️ Subprocess stderr:\n{stderr}")
 
         if not stdout:
             return None, "No response received from ChromaDB."
@@ -48,7 +62,7 @@ def query_vector_db(question):
         try:
             json_output = json.loads(stdout)
         except json.JSONDecodeError as e:
-            print(f"❌ Raw stdout:\n{stdout}")
+            # print(f"Raw stdout:\n{stdout}")
             return None, f"Invalid JSON response from ChromaDB: {str(e)}"
 
         if "error" in json_output:
@@ -75,8 +89,6 @@ def create_prompt(context, question):
 def get_llm_response(prompt):
     """Generates response using the LLM."""
     stop_words = ['<human>:', '\n<bot>:']
-    print("THIS IS WHATS GOING TO THE MODEL")
-    print(prompt)
     generated_text = model_llm.get_llm_generation(
         prompt,
         stop_words,
@@ -116,16 +128,16 @@ def home():
                 if use_chroma:
                     context, metadata = query_vector_db(question)
                     if context:
-                        print(f"✅ Retrieved context from ChromaDB: {context}")
+                        print(f"Retrieved context from ChromaDB: {context}")
                         prompt = create_prompt(context, question)
                         llm_response = get_llm_response(prompt)
-                        print(f"✅ LLM Response with context: {llm_response}")
+                        print(f"LLM Response with context: {llm_response}")
                     else:
                         error = f"Error querying Vector DB: {metadata}"
                 else:
                     prompt = create_prompt(None, question)
                     llm_response = get_llm_response(prompt)
-                    print(f"✅ LLM Response without context: {llm_response}")
+                    print(f"LLM Response without context: {llm_response}")
         except Exception as e:
             error = f"Unexpected error: {str(e)}"
 

@@ -15,7 +15,7 @@ entries:
         LLM models to perform context retrieval and chat response
         generation with factual responses.
     image_path: >-
-      https://raw.githubusercontent.com/cloudera/CML_AMP_LLM_Chatbot_Augmented_with_Enterprise_Data/main/images/catalog-screenshot.png
+      https://raw.githubusercontent.com/kevinbtalbert/CML_GOV_AMP_LLM_Chatbot_Augmented_with_Enterprise_Data/main/images/catalog-screenshot.jpg
     tags:
       - Chatbot
       - LLM
@@ -23,7 +23,7 @@ entries:
       - Generative AI
       - RAG
       - Vector DB
-      - Milvus
+      - Chroma
       - Transformers
       - NLP
       - GPU

@@ -82,7 +82,7 @@ tasks:
     short_summary: Run job to download pre-trained models.
 
   - type: create_job
-    name: Setup a Job for user to convert HTMLs to Text for loading to Vector DB
+    name: Download / Convert HTMLs to Text
     entity_label: download_htmls
     script: 5_job-populate-vectordb/exec-html-to-text.py
     arguments: None
@@ -113,8 +113,8 @@ tasks:
     short_summary: Populate Vector DB with documents embeddings
   
   - type: start_application
-    name: CML LLM Chatbot
-    subdomain: cmlllm
+    name: LLM RAG Chatbot
+    subdomain: llm-rag-chatbot
     script: 6_app/llm_rag_app.py
     short_summary: Start CML LLM Chatbot application
     long_summary: This application requires an available GPU to run the LLM model. Startup may be delayed if autoscaling is being performed or fail if GPU cannot be scheduled on this workspace. Please contact your administrator for GPU scheduling.

@@ -1,3 +1,17 @@
+# Copyright 2025 Cloudera Government Solutions, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import json
 import sys
@@ -12,7 +26,7 @@ sys.path.insert(0, VENV_SITE_PACKAGES)
 # Configuration
 EMBEDDING_MODEL_PATH = "/home/cdsw/models/embedding-model"
 CHROMA_DATA_FOLDER = "/home/cdsw/chroma-data"
-COLLECTION_NAME = "cml-default"
+COLLECTION_NAME = os.getenv('COLLECTION_NAME')
 
 # Initialize embedding function
 embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
